@@ -106,7 +106,7 @@ for (const match of indexHtml.matchAll(/(?:src|href)="(\/[^"]+)"/g)) {
   const ref = match[1].split('?')[0];
   if (ref.startsWith('/api/') || ref.startsWith('/auth/') || ref.startsWith('/media/')) continue;
   const rel = ref.replace(/^\//, '');
-  if (!rel || !fs.existsSync(path.join(ROOT, rel))) fail(`index.html references missing file: ${ref}`);
+  if (!rel || !fs.existsSync(path.join(ROOT, 'public', rel))) fail(`index.html references missing file: ${ref}`);
 }
 
 if (/<script(?![^>]*type="module")[^>]*>[\s\S]*?\S[\s\S]*?<\/script>/i.test(indexHtml)) {
@@ -173,7 +173,9 @@ const emitted = new Set();
 for (const match of serverStream.matchAll(/event:\s*([a-zA-Z_]+)\\n/g)) emitted.add(match[1]);
 for (const match of serverStream.matchAll(/broadcast\(\s*'([a-zA-Z_]+)'/g)) emitted.add(match[1]);
 
+const BUILTIN_EVENTS = new Set(['open', 'error', 'message']);
 for (const match of clientSource.matchAll(/source\.addEventListener\(\s*'([a-zA-Z_]+)'/g)) {
+  if (BUILTIN_EVENTS.has(match[1])) continue;
   if (!emitted.has(match[1])) fail(`browser listens for SSE event "${match[1]}" that the server never emits`);
 }
 
