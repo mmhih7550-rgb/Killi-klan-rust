@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#08090c" />
+    <meta name="color-scheme" content="dark" />
+    <title>CLAN KILLI — Единство. Контроль. Сообщество.</title>
+    <meta
+      name="description"
+      content="CLAN KILLI — закрытый Rust-клан по заявкам: состав, чат, загрузки, Discord и KILLI ULTIMATE APP. Автор проекта FREAK."
+    />
+    <meta property="og:title" content="CLAN KILLI" />
+    <meta property="og:description" content="Единство. Контроль. Сообщество." />
+    <meta property="og:type" content="website" />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body data-bg="tech">
+    <!-- procedural techno background: depth layers, red light lines, particles -->
+    <div class="bg-shell" aria-hidden="true">
+      <div class="bg-image" id="bgImage"></div>
+      <div class="bg-grid"></div>
+      <div class="bg-aurora"></div>
+      <div class="bg-lines">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div class="bg-particles">
+        <span></span><span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div class="bg-scan"></div>
+      <div class="bg-vignette"></div>
+    </div>
+
+    <div class="boot" id="boot">
+      <div class="boot-mark">K</div>
+      <div class="boot-text">CLAN KILLI</div>
+      <div class="boot-bar"><i></i></div>
+    </div>
+
+    <header class="topbar" id="topbar">
+      <div class="topbar-inner">
+        <a class="brand" id="brand" href="#/" aria-label="CLAN KILLI — на главную">
+          <span class="brand-mark"><span>K</span></span>
+          <span class="brand-text">
+            <strong>CLAN KILLI</strong>
+            <small>Единство. Контроль. Сообщество.</small>
+          </span>
+        </a>
+
+        <nav class="nav" id="nav" aria-label="Основная навигация"></nav>
+
+        <div class="topbar-actions">
+          <a class="account-btn" id="accountBtn" href="#/account">Личный кабинет</a>
+          <button class="nav-toggle" id="navToggle" type="button" aria-label="Меню" aria-expanded="false" aria-controls="navDrawer">
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+      </div>
+      <div class="topbar-line"></div>
+    </header>
+
+    <aside class="nav-drawer" id="navDrawer" aria-label="Мобильное меню"></aside>
+    <div class="drawer-scrim" id="drawerScrim"></div>
+
+    <main class="shell" id="app"></main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <span class="footer-mark">K</span>
+          <div>
+            <strong>CLAN KILLI</strong>
+            <p class="muted small" id="footerNote">Закрытый игровой клан Rust. Сообщество по заявкам.</p>
+          </div>
+        </div>
+        <nav class="footer-links" id="footerLinks" aria-label="Разделы сайта"></nav>
+        <div class="footer-meta">
+          <span class="footer-badge">RUST · CLOSED COMMUNITY</span>
+          <p class="tiny muted">
+            Steam и Discord — официальные способы входа. KILLI ULTIMATE APP не является антивирусом и не гарантирует
+            обнаружение всех читов.
+          </p>
+        </div>
+      </div>
+      <div class="footer-base">
+        <span class="tiny muted">© <span id="footerYear">2025</span> CLAN KILLI</span>
+        <button class="by-freak" id="byFreak" type="button" aria-label="BY FREAK">BY FREAK</button>
+      </div>
+    </footer>
+
+    <nav class="mobile-nav" id="mobileNav" aria-label="Навигация на телефоне"></nav>
+
+    <div class="toast-root" id="toastRoot" role="status" aria-live="polite"></div>
+    <div id="modalRoot"></div>
+
+    <script type="module" src="/assets/app.js"></script>
+  </body>
+</html>
