@@ -341,7 +341,12 @@ async function run() {
   check('owner can delete a message as moderation', [200, 204].includes(res.status), `status ${res.status}`);
 
   res = await api(userA.jar, 'GET', '/api/chat/messages');
-  check('deleted message disappears', !((res.data && res.data.messages) || []).some((m) => m.id === msg.id));
+  const afterDelete = ((res.data && res.data.messages) || []).find((m) => m.id === msg.id);
+  check(
+    'deleted message body is hidden from members (soft delete)',
+    Boolean(afterDelete) && afterDelete.deleted === true && afterDelete.body === null,
+    JSON.stringify(afterDelete)
+  );
 
   /* ---- exception application ---- */
   res = await api(
@@ -506,7 +511,7 @@ async function run() {
 
   const beforeLogout = await api(userB.jar, 'GET', '/api/applications/me');
   check('user session works before logout', beforeLogout.status === 200);
-  res = await api(userB.jar, 'POST', '/api/auth/logout');
+  res = await api(userB.jar, 'POST', '/auth/logout');
   check('user can log out', [200, 204].includes(res.status), `status ${res.status}`);
   res = await api(userB.jar, 'GET', '/api/applications/me');
   check('user session is invalid after logout (401)', res.status === 401, `status ${res.status}`);
