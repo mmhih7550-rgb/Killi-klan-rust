@@ -201,11 +201,15 @@ function classNames(source) {
       addTokens(value);
       continue;
     }
-    // Literal part of a template literal, plus quoted class strings inside `${...}`
-    // expressions, so conditional classes such as 'is-mine' are still checked.
+    // Literal part of a template literal, plus class strings returned by ternaries
+    // inside `${...}`, so conditional classes such as 'is-mine' are still checked
+    // while comparison values like `role === 'moderator'` are ignored.
     addTokens(value.replace(/\$\{[^}]*\}/g, ' '));
     for (const expr of value.matchAll(/\$\{([^}]*)\}/g)) {
-      for (const literal of expr[1].matchAll(/'([^']*)'/g)) addTokens(literal[1]);
+      for (const segment of expr[1].split(/[?:]/)) {
+        const literal = segment.match(/^\s*'([^']*)'/);
+        if (literal) addTokens(literal[1]);
+      }
     }
   }
   return found;
