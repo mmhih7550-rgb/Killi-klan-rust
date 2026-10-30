@@ -52,6 +52,11 @@ function expect(condition, message) {
   else fail(message);
 }
 
+/* Rendered text is CSS-transformed (the hero tagline is uppercased), so compare normalised. */
+function normalize(text) {
+  return String(text).replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
 function loadPlaywright() {
   for (const candidate of PW_PATHS) {
     try {
@@ -155,14 +160,15 @@ const ROUTES = [
       const response = await page.goto(`${BASE}/${route.hash}`, { waitUntil: 'networkidle', timeout: 30000 });
       await page.waitForTimeout(250);
 
-      expect(response && response.status() === 200, `${route.name}: document returns 200`);
+      // Hash navigations are same-document: Chromium reports no response for them.
+      expect(!response || response.status() === 200, `${route.name}: document returns 200`);
 
       const appText = (await page.locator('#app').innerText().catch(() => '')).trim();
       expect(appText.length > 40, `${route.name}: view rendered (${appText.length} chars)`);
 
+      const bodyText = normalize(await page.locator('body').innerText());
       for (const expected of route.texts) {
-        const found = (await page.locator('body').innerText()).includes(expected);
-        expect(found, `${route.name}: shows "${expected}"`);
+        expect(bodyText.includes(normalize(expected)), `${route.name}: shows "${expected}"`);
       }
 
       expect(consoleErrors.length === 0, `${route.name}: no console errors${consoleErrors.length ? ` → ${consoleErrors[0]}` : ''}`);
