@@ -1613,6 +1613,14 @@ body.drawer-open .drawer-scrim {
   margin-top: 10px;
 }
 
+/* Counter row used by the admin section headers. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
 .chip-btn {
   padding: 7px 14px;
   border-radius: 999px;
@@ -2554,6 +2562,15 @@ select {
 
 .login-card .btn {
   margin-top: 6px;
+}
+
+/* Platform not configured yet: the card stays clickable but reads as unavailable. */
+.login-card.is-dim {
+  opacity: 0.62;
+}
+
+.login-card.is-dim .login-icon {
+  filter: grayscale(0.65);
 }
 
 /* ================================ chat ================================ */
