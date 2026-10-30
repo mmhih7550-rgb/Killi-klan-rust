@@ -255,8 +255,15 @@ async function run() {
   res = await api(owner, 'POST', '/api/owner/login', { password: 'Moti3003' });
   check('owner login accepts the first password and asks for the second', res.status === 200 && res.data && res.data.step === 2, JSON.stringify(res.data));
 
+  // a failed/empty second step burns the pending session, so log in again afterwards
   res = await api(owner, 'POST', '/api/owner/verify', {});
   check('second step rejects a missing second password (400/401)', [400, 401].includes(res.status), `status ${res.status}`);
+
+  res = await api(owner, 'GET', '/api/admin/overview');
+  check('pending second step alone grants no admin access (401)', res.status === 401, `status ${res.status}`);
+
+  res = await api(owner, 'POST', '/api/owner/login', { password: 'Moti3003' });
+  check('owner can restart the two-step login', res.status === 200 && res.data && res.data.step === 2, JSON.stringify(res.data));
 
   res = await api(owner, 'POST', '/api/owner/verify', { password: 'Kili clan 26' });
   check('owner login completes after the second password', res.status === 200, JSON.stringify(res.data));
