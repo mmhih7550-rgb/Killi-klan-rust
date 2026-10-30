@@ -220,10 +220,16 @@ const markupClasses = new Set([
 ]);
 const jsClasses = classNames(browserFiles.map((file) => fs.readFileSync(file, 'utf8')).join('\n'));
 
+// Class prefixes completed at runtime (e.g. `tag-${kind}`, `status-${key}`):
+// the concrete rules exist per variant, the bare prefix is not a real class.
+const DYNAMIC_PREFIXES = new Set(['tag-', 'status-', 'badge-', 'spec-']);
+
 for (const name of markupClasses) {
+  if (DYNAMIC_PREFIXES.has(name)) continue;
   if (!defined.has(name)) fail(`index.html uses class ".${name}" with no rule in styles.css`);
 }
 for (const name of jsClasses) {
+  if (DYNAMIC_PREFIXES.has(name)) continue;
   if (!defined.has(name)) warn(`view markup uses class ".${name}" with no rule in styles.css`);
 }
 
