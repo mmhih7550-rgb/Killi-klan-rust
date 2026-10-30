@@ -506,7 +506,7 @@ async function tabMembers(content) {
         ${statCard('Other', stats.other || 0)}
       </div>
       <form class="admin-filters" data-filters>
-        <label class="field"><span>Поиск</antml:span><input class="input" name="q" value="${esc(filters.q)}" placeholder="Никнейм или Steam ID" /></label>
+        <label class="field"><span>Поиск</span><input class="input" name="q" value="${esc(filters.q)}" placeholder="Никнейм или Steam ID" /></label>
         <label class="field"><span>Специализация</span>
           <select class="input" name="spec">
             <option value="all">Все</option>
