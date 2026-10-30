@@ -303,6 +303,21 @@ export async function accountPage() {
       </article>
     </section>`,
     mount(root) {
+      const statusForm = root.querySelector('#statusForm');
+      if (statusForm) {
+        statusForm.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          const select = statusForm.querySelector('[name="manual_status"]');
+          try {
+            const res = await api('/me', { method: 'PATCH', body: { manual_status: select.value } });
+            state.user = res.user;
+            toast('Статус обновлён');
+            window.dispatchEvent(new CustomEvent('killi:refresh'));
+          } catch (error) {
+            toast(error.message, 'bad');
+          }
+        });
+      }
       root.querySelectorAll('#profileForm').forEach((form) => {
         form.addEventListener('submit', async (event) => {
           event.preventDefault();
