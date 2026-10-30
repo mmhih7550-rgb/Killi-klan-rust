@@ -1733,6 +1733,22 @@ body.drawer-open .drawer-scrim {
   color: var(--muted);
 }
 
+.status-pill.ok {
+  color: var(--ok);
+}
+
+.status-pill.warn {
+  color: var(--warn);
+}
+
+.status-pill.bad {
+  color: var(--danger);
+}
+
+.status-pill.muted {
+  color: var(--muted);
+}
+
 /* ============================== avatars =============================== */
 
 .avatar {
