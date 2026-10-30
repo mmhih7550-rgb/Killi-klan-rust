@@ -208,7 +208,7 @@ export async function accountPage() {
             </article>
             <article class="card">
               <h3>Мой статус</h3>
-              <form id="profileForm" class="form">
+              <form id="statusForm" class="form">
                 <div class="form-row">
                   <label>Отображаемый статус
                     <select name="manual_status">
@@ -811,10 +811,12 @@ export async function chatPage() {
             /* ignore */
           }
         });
-        source.addEventListener('presence', (event) => {
+        source.addEventListener('ready', (event) => {
           try {
             const payload = JSON.parse(event.data);
-            if (onlineLabel) onlineLabel.textContent = `${payload.online} онлайн`;
+            if (onlineLabel && typeof payload.online === 'number') {
+              onlineLabel.textContent = `${payload.online} онлайн`;
+            }
           } catch {
             /* ignore */
           }
