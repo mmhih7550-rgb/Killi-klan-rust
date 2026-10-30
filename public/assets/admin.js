@@ -1231,7 +1231,7 @@ async function tabStats(content) {
 /* ------------------------------- security ------------------------------- */
 
 async function tabSecurity(content) {
-  const data = await api('/admin/owner/security/audit');
+  const data = await api('/owner/security/audit');
   const creds = data.credentials || {};
   content.innerHTML = `
     <div class="admin-section-head"><h2>Безопасность доступа</h2>
