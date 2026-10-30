@@ -266,7 +266,6 @@ const ROUTES = [
       ['/api/site', 200],
       ['/api/news', 200],
       ['/api/downloads', 200],
-      ['/api/members', 200],
       ['/api/app', 200],
       ['/api/roles', 200],
       ['/api/owner/status', 200],
@@ -275,6 +274,15 @@ const ROUTES = [
       const res = await page.request.get(`${BASE}${endpoint}`);
       expect(res.status() === status, `GET ${endpoint} → ${res.status()}`);
     }
+
+    // The roster is clan-internal: guests must not read it.
+    const roster = await page.request.get(`${BASE}/api/members`);
+    expect(roster.status() === 401 || roster.status() === 403, `GET /api/members is members-only (${roster.status()})`);
+
+    await page.goto(`${BASE}/#/members`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(250);
+    const guestRoster = normalize(await page.locator('#app').innerText());
+    expect(guestRoster.includes('принят'), 'guest sees the members-only explanation on #/members');
 
     const guarded = await page.request.get(`${BASE}/api/applications/me`);
     expect(guarded.status() === 401 || guarded.status() === 403, `GET /api/applications/me is guarded (${guarded.status()})`);
