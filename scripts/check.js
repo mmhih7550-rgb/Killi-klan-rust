@@ -187,18 +187,25 @@ for (const match of styles.matchAll(/\.([a-zA-Z][\w-]*)/g)) defined.add(match[1]
 
 function classNames(source) {
   const found = new Set();
+  const CLASS_TOKEN = /^[a-z][a-z0-9_-]*$/;
+
+  const addTokens = (text) => {
+    for (const token of text.split(/[\s"'`]+/)) {
+      if (token && CLASS_TOKEN.test(token) && token.length > 2) found.add(token);
+    }
+  };
+
   for (const match of source.matchAll(/class="([^"]*)"/g)) {
     const value = match[1];
-    if (value.includes('${')) {
-      for (const part of value.split('${')) {
-        for (const token of part.split(/[\s"'`]+/)) {
-          if (/^[a-z][\w-]*$/.test(token) && token.length > 2) found.add(token);
-        }
-      }
+    if (!value.includes('${')) {
+      addTokens(value);
       continue;
     }
-    for (const token of value.split(/\s+/)) {
-      if (token) found.add(token);
+    // Literal part of a template literal, plus quoted class strings inside `${...}`
+    // expressions, so conditional classes such as 'is-mine' are still checked.
+    addTokens(value.replace(/\$\{[^}]*\}/g, ' '));
+    for (const expr of value.matchAll(/\$\{([^}]*)\}/g)) {
+      for (const literal of expr[1].matchAll(/'([^']*)'/g)) addTokens(literal[1]);
     }
   }
   return found;

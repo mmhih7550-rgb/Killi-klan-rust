@@ -3659,6 +3659,12 @@ select {
   object-fit: cover;
 }
 
+/* Wide preview used for the site background image in the design section. */
+.admin-logo-preview.wide {
+  width: 100%;
+  height: 150px;
+}
+
 .admin-bar-track {
   min-width: 60px;
 }
