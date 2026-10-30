@@ -199,6 +199,7 @@ async function run() {
   const guest = {};
   const userA = seedUser('FlowTester');
   const userB = seedUser('RookieFlow');
+  const mod = seedUser('ModFlow', { role: 'moderator', specialization: 'builder' });
 
   /* ---- guest guards ---- */
   let res = await api(guest, 'GET', '/api/health');
@@ -301,10 +302,18 @@ async function run() {
   check('member row exposes only a manual status', Boolean(self) && ['online', 'offline', 'afk', 'ingame'].includes(self.manual_status));
 
   res = await api(userA.jar, 'GET', '/api/roles');
-  check('roles statistics are available to members', res.status === 200 && Boolean(res.data && res.data.counts));
+  check(
+    'roles statistics are available to members',
+    res.status === 200 && Array.isArray(res.data && res.data.roles) && res.data.roles.length === 5,
+    JSON.stringify(res.data && Object.keys(res.data))
+  );
 
-  res = await api(userA.jar, 'PATCH', '/api/profile', { bio: 'Тестовый профиль', show_discord: false });
-  check('member can edit their profile', [200, 204].includes(res.status), `status ${res.status}`);
+  res = await api(userA.jar, 'PATCH', '/api/me', { bio: 'Тестовый профиль', show_discord: false });
+  check(
+    'member can edit their profile',
+    res.status === 200 && res.data && res.data.user && res.data.user.bio === 'Тестовый профиль',
+    `status ${res.status}`
+  );
 
   /* ---- chat ---- */
   res = await api(userA.jar, 'POST', '/api/chat/messages', { body: 'Привет, клан! Я с вайпа.' });
@@ -315,14 +324,21 @@ async function run() {
   const messages = (res.data && res.data.messages) || [];
   check('message is persisted and returned to members', messages.some((m) => m.id === msg.id));
 
-  res = await api(userA.jar, 'POST', '/api/chat/reports', { message_id: msg.id, reason: 'Проверка жалобы' });
-  check('member can report a message', [200, 201].includes(res.status), `status ${res.status}`);
+  res = await api(userA.jar, 'POST', `/api/chat/messages/${msg.id}/report`, { reason: 'Проверка жалобы' });
+  check('member cannot report their own message (400)', res.status === 400, `status ${res.status}`);
 
-  res = await api(owner, 'GET', '/api/admin/chat/messages');
-  check('owner sees chat in moderation', res.status === 200 && Boolean(res.data), `status ${res.status}`);
+  res = await api(mod.jar, 'POST', `/api/chat/messages/${msg.id}/report`, { reason: 'Проверка жалобы' });
+  check('another member can report a message (201)', res.status === 201, `status ${res.status}`);
 
-  res = await api(owner, 'DELETE', `/api/chat/messages/${msg.id}`);
-  check('moderator can delete the message', [200, 204].includes(res.status), `status ${res.status}`);
+  res = await api(owner, 'GET', '/api/admin/chat');
+  check(
+    'owner sees chat and open reports in moderation',
+    res.status === 200 && JSON.stringify(res.data).includes('Проверка жалобы'),
+    `status ${res.status}`
+  );
+
+  res = await api(owner, 'POST', `/api/admin/chat/${msg.id}/delete`, { reason: 'moderation-test' });
+  check('owner can delete a message as moderation', [200, 204].includes(res.status), `status ${res.status}`);
 
   res = await api(userA.jar, 'GET', '/api/chat/messages');
   check('deleted message disappears', !((res.data && res.data.messages) || []).some((m) => m.id === msg.id));
@@ -340,6 +356,9 @@ async function run() {
       specialization: 'farmer',
       extra_roles: [],
       exception_why: 'Меньше 700 часов, но играю стабильно и быстро учусь.',
+      exception_skills: 'Фарм, логистика, быстрый крафт.',
+      exception_clan_experience: 'Без опыта в кланах, но играю ежедневно.',
+      exception_useful: 'Могу закрывать фарм и обеспечивать состав ресурсами.',
       extra_skills: 'Фарм и логистика.',
     }
   );
