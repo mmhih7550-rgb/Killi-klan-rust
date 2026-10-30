@@ -220,12 +220,8 @@ for (const message of warnings) console.warn(`warn  ${message}`);
 
 if (errors.length) {
   for (const message of errors) console.error(`error ${message}`);
-  console.error(`\n✗ check failed: ${errors.length} error(s), ${winnings(warnings)} warning(s)`);
+  console.error(`\n✗ check failed: ${errors.length} error(s), ${warnings.length} warning(s)`);
   process.exit(1);
-}
-
-function winnings(list) {
-  return list.length;
 }
 
 console.log(
