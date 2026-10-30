@@ -63,8 +63,16 @@ app.use(
 
 /* --------------------------------- routes -------------------------------- */
 
+const healthPayload = () => ({ ok: true, uptime: Math.round(process.uptime()), ts: new Date().toISOString() });
+
 app.get('/healthz', (req, res) => {
-  res.json({ ok: true, uptime: Math.round(process.uptime()), ts: new Date().toISOString() });
+  res.json(healthPayload());
+});
+
+/* some edge/proxy setups intercept the bare /healthz path, so expose the same
+   probe under our own API namespace — this one always reaches the Node app. */
+app.get('/api/health', (req, res) => {
+  res.json(healthPayload());
 });
 
 app.use('/auth', auth.router);
