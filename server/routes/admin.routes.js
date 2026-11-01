@@ -93,8 +93,7 @@ router.post('/owner/login', (req, res) => {
   if (lock) {
     return res.status(423).json({
       error: 'locked',
-      message: `Вход временно заблокирован до ${lock.toLocaleTimeString('ru-RU')}.`,
-      locked_until: lock.toISOString(),
+      message: 'Слишком много неудачных попыток. Попробуйте позже.',
     });
   }
   const limiter = rateLimit(`owner:${req.ip}`, { limit: 8, windowMs: 10 * 60 * 1000 });
@@ -103,15 +102,8 @@ router.post('/owner/login', (req, res) => {
   }
   const password = String((req.body && req.body.password) || '');
   if (!verifyPassword(password, creds.pass1_hash)) {
-    const updated = registerFailure('step1 failed', req);
-    const nowLocked = lockedUntil(updated);
-    return res.status(401).json({
-      error: 'bad_password',
-      message: nowLocked
-        ? `Неверный пароль. Вход заблокирован до ${nowLocked.toLocaleTimeString('ru-RU')}.`
-        : `Неверный пароль. Осталось попыток: ${Math.max(0, MAX_ATTEMPTS - (updated.failed_count || 0))}.`,
-      attempts_left: Math.max(0, MAX_ATTEMPTS - (updated.failed_count || 0)),
-    });
+    registerFailure('step1 failed', req);
+    return res.status(401).json({ error: 'bad_password', message: 'Неверный пароль.' });
   }
   const { token } = createAdminSession({ ip: req.ip, ua: req.headers['user-agent'], pending: true });
   setCookie(res, ADMIN_COOKIE, token, { maxAge: 1000 * 60 * 10, secure: req.secure, sameSite: 'Strict' });
