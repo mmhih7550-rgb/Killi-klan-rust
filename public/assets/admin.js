@@ -79,9 +79,6 @@ function renderStepOne(host) {
       renderStepTwo(host, data);
     } catch (error) {
       fieldError(host, error.message);
-      if (error.data && error.data.locked_until) {
-        fieldError(host, `${error.message} Блокировка снимается автоматически.`);
-      }
       busy(host, false);
     }
   });
