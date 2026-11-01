@@ -243,3 +243,63 @@ export function statusDot(status) {
   const key = (status && status.key) || 'offline';
   return `<span class="status status-${esc(key)}"><i></i>${esc((status && status.label) || 'Offline')}</span>`;
 }
+
+/* ------------------------------ live chat hub ----------------------------- */
+
+/**
+ * Одно SSE-соединение с клановым чатом на всю страницу.
+ * Его слушают и страница чата, и оболочка сайта (уведомления/счётчик непрочитанных).
+ */
+export const chatHub = {
+  source: null,
+  listeners: new Set(),
+  online: 0,
+
+  get running() {
+    return Boolean(this.source);
+  },
+
+  start() {
+    if (this.source || typeof window === 'undefined' || !window.EventSource) return;
+    const source = new EventSource('/api/chat/stream');
+    this.source = source;
+    ['message', 'message_deleted', 'ready', 'error'].forEach((name) => {
+      source.addEventListener(name, (event) => this.emit(name, event));
+    });
+  },
+
+  stop() {
+    if (this.source) {
+      this.source.close();
+      this.source = null;
+    }
+    this.online = 0;
+  },
+
+  emit(name, event) {
+    let payload = null;
+    if (event && typeof event.data === 'string' && event.data) {
+      try {
+        payload = JSON.parse(event.data);
+      } catch {
+        payload = null;
+      }
+    }
+    if (name === 'ready' && payload && typeof payload.online === 'number') this.online = payload.online;
+    this.listeners.forEach((fn) => {
+      try {
+        fn(name, payload);
+      } catch {
+        /* слушатель не должен ломать поток */
+      }
+    });
+  },
+
+  subscribe(fn) {
+    this.listeners.add(fn);
+    this.start();
+    return () => {
+      this.listeners.delete(fn);
+    };
+  },
+};
