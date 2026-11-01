@@ -280,6 +280,8 @@ async function run() {
   check('user cannot self-promote through the admin route (401)', res.status === 401, `status ${res.status}`);
 
   /* ---- owner two-step login ---- */
+  // Внимание: каждая неудачная попытка увеличивает failed_count (лимит 5 до
+  // блокировки), поэтому в этом блоке не больше трёх ошибок.
   const owner = {};
   res = await api(owner, 'POST', '/api/owner/login', { password: 'wrong-password' });
   check('owner login rejects a wrong first password (401)', res.status === 401, `status ${res.status}`);
@@ -287,24 +289,32 @@ async function run() {
   res = await api(owner, 'GET', '/api/admin/overview');
   check('failed attempt does not grant admin access', res.status === 401, `status ${res.status}`);
 
-  res = await api(owner, 'POST', '/api/owner/login', { password: 'Moti3003' });
-  check('owner login accepts the first password and asks for the second', res.status === 200 && res.data && res.data.step === 2, JSON.stringify(res.data));
+  res = await api(owner, 'POST', '/api/owner/login', { password: LEGACY_PASS_1 });
+  check('legacy first password no longer works (401)', res.status === 401, `status ${res.status}`);
 
-  // a failed/empty second step burns the pending session, so log in again afterwards
-  res = await api(owner, 'POST', '/api/owner/verify', {});
-  check('second step rejects a missing second password (400/401)', [400, 401].includes(res.status), `status ${res.status}`);
+  res = await api(owner, 'POST', '/api/owner/login', { password: OWNER_PASS_1 });
+  check('owner login accepts the new first password and asks for the second', res.status === 200 && res.data && res.data.step === 2, JSON.stringify(res.data));
 
   res = await api(owner, 'GET', '/api/admin/overview');
   check('pending second step alone grants no admin access (401)', res.status === 401, `status ${res.status}`);
 
-  res = await api(owner, 'POST', '/api/owner/login', { password: 'Moti3003' });
+  // неудачный второй шаг сжигает pending-сессию, поэтому дальше логинимся заново
+  res = await api(owner, 'POST', '/api/owner/verify', { password: LEGACY_PASS_2 });
+  check('legacy second password no longer works (401)', res.status === 401, `status ${res.status}`);
+
+  res = await api(owner, 'POST', '/api/owner/login', { password: OWNER_PASS_1 });
   check('owner can restart the two-step login', res.status === 200 && res.data && res.data.step === 2, JSON.stringify(res.data));
 
-  res = await api(owner, 'POST', '/api/owner/verify', { password: 'Kili clan 26' });
-  check('owner login completes after the second password', res.status === 200, JSON.stringify(res.data));
+  res = await api(owner, 'POST', '/api/owner/verify', { password: OWNER_PASS_2 });
+  check('owner login completes after the new second password', res.status === 200, JSON.stringify(res.data));
 
   res = await api(owner, 'GET', '/api/owner/status');
   check('owner status reports an authenticated session', res.data && res.data.authed === true);
+  check(
+    'owner status exposes no lockout counters to the visitor',
+    res.data && !('locked_until' in res.data) && !('failed_count' in res.data) && !('retry_after' in res.data),
+    JSON.stringify(res.data)
+  );
 
   res = await api(owner, 'GET', '/api/admin/overview');
   check('admin overview is reachable for the owner', res.status === 200 && Boolean(res.data), `status ${res.status}`);
