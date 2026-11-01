@@ -563,6 +563,160 @@ async function run() {
   if (/Error|UnhandledPromiseRejection/.test(serverLog) && /throw|at Object/.test(serverLog)) {
     console.log(`\n--- server log ---\n${serverLog.slice(-2000)}`);
   }
+
+  await ownerCredentialLifecycle();
+}
+
+/* --------------------- owner credential lifecycle ------------------------ */
+/*
+ * Отдельная фаза: сервер поднимается заново на уже существующей БД без
+ * переменных окружения. Это доказывает, что хеши в базе пережили рестарт,
+ * что старые пароли мертвы, что смена первого и второго пароля независима и
+ * что KILLI_OWNER_PASSWORD_1/2 переопределяют креденшелы при старте.
+ */
+
+async function loginOwner(jar) {
+  const first = await api(jar, 'POST', '/api/owner/login', { password: OWNER_PASS_1, ...arguments[1] });
+  return first;
+}
+
+async function ownerCredentialLifecycle() {
+  /* ---- 1. рестарт на существующей БД: новые хеши сохранились ---- */
+  await stopChild();
+  await startServer();
+
+  const owner = {};
+  let res = await api(owner, 'POST', '/api/owner/login', { password: OWNER_PASS_1 });
+  check('restart: new first password still works on the existing database', res.status === 200 && res.data && res.data.step === 2, `status ${res.status}`);
+
+  res = await api(owner, 'POST', '/api/owner/verify', { password: OWNER_PASS_2 });
+  check('restart: new second password completes the login', res.status === 200, `status ${res.status}`);
+
+  res = await api(owner, 'GET', '/api/admin/overview');
+  check('restart: admin panel data is served to the owner', res.status === 200 && Boolean(res.data), `status ${res.status}`);
+
+  const legacyJar = {};
+  res = await api(legacyJar, 'POST', '/api/owner/login', { password: LEGACY_PASS_1 });
+  check('restart: legacy first password is rejected after rotation (401)', res.status === 401, `status ${res.status}`);
+
+  /* ---- 2. прямой вход в админ-API без сессии ---- */
+  const anon = {};
+  res = await api(anon, 'GET', '/api/admin/overview');
+  check('direct admin API call without an owner session returns 401', res.status === 401, `status ${res.status}`);
+  res = await api(anon, 'GET', '/api/admin/applications');
+  check('direct applications API call returns no data (401)', res.status === 401, `status ${res.status}`);
+  res = await api(anon, 'GET', '/api/owner/security/audit');
+  check('direct security audit call returns no data (401)', res.status === 401, `status ${res.status}`);
+
+  /* ---- 3. независимая смена паролей ---- */
+  res = await api(owner, 'POST', '/api/owner/security/password', {
+    which: 'first',
+    current: OWNER_PASS_2,
+    value: ROTATED_PASS_1,
+  });
+  check('changing the first password requires the current first password (401)', res.status === 401, `status ${res.status}`);
+
+  res = await api(owner, 'POST', '/api/owner/security/password', {
+    which: 'third',
+    current: OWNER_PASS_1,
+    value: ROTATED_PASS_1,
+  });
+  check('unknown password slot is rejected (400)', res.status === 400, `status ${res.status}`);
+
+  res = await api(owner, 'POST', '/api/owner/security/password', {
+    which: 'first',
+    current: OWNER_PASS_1,
+    value: OWNER_PASS_2,
+  });
+  check('a password identical to the other one is rejected (400)', res.status === 400, `status ${res.status}`);
+
+  res = await api(owner, 'POST', '/api/owner/security/password', {
+    which: 'first',
+    current: OWNER_PASS_1,
+    value: 'short',
+  });
+  check('too short password is rejected (400)', res.status === 400, `status ${res.status}`);
+
+  res = await api(owner, 'POST', '/api/owner/security/password', {
+    which: 'first',
+    current: OWNER_PASS_1,
+    value: ROTATED_PASS_1,
+  });
+  check('owner can change the first password on its own', res.status === 200, JSON.stringify(res.data));
+
+  const afterFirst = {};
+  res = await api(afterFirst, 'POST', '/api/owner/login', { password: OWNER_PASS_1 });
+  check('the replaced first password stops working immediately (401)', res.status === 401, `status ${res.status}`);
+
+  res = await api(afterFirst, 'POST', '/api/owner/login', { password: ROTATED_PASS_1 });
+  check('the new first password is accepted', res.status === 200 && res.data && res.data.step === 2, `status ${res.status}`);
+  res = await api(afterFirst, 'POST', '/api/owner/verify', { password: OWNER_PASS_2 });
+  check('the second password is untouched by the first password change', res.status === 200, `status ${res.status}`);
+
+  res = await api(afterFirst, 'POST', '/api/owner/security/password', {
+    which: 'second',
+    current: OWNER_PASS_2,
+    value: ROTATED_PASS_2,
+  });
+  check('owner can change the second password on its own', res.status === 200, JSON.stringify(res.data));
+
+  const brokenSecond = {};
+  res = await api(brokenSecond, 'POST', '/api/owner/login', { password: ROTATED_PASS_1 });
+  check('first password still works after the second password change', res.status === 200, `status ${res.status}`);
+  res = await api(brokenSecond, 'POST', '/api/owner/verify', { password: OWNER_PASS_2 });
+  check('the replaced second password stops working immediately (401)', res.status === 401, `status ${res.status}`);
+
+  const rotated = {};
+  res = await api(rotated, 'POST', '/api/owner/login', { password: ROTATED_PASS_1 });
+  check('rotated credentials: first step passes', res.status === 200 && res.data && res.data.step === 2, `status ${res.status}`);
+  res = await api(rotated, 'POST', '/api/owner/verify', { password: ROTATED_PASS_2 });
+  check('rotated credentials: login completes with the rotated pair', res.status === 200, `status ${res.status}`);
+
+  /* ---- 4. ротация и переопределение через переменные окружения ---- */
+  await stopChild();
+  await startServer();
+  const persisted = {};
+  res = await api(persisted, 'POST', '/api/owner/login', { password: ROTATED_PASS_1 });
+  check('rotated passwords survive a server restart', res.status === 200, `status ${res.status}`);
+  res = await api(persisted, 'POST', '/api/owner/verify', { password: ROTATED_PASS_2 });
+  check('rotated pair completes login after restart', res.status === 200, `status ${res.status}`);
+
+  await stopChild();
+  await startServer({
+    KILLI_OWNER_PASSWORD_1: ENV_PASS_1,
+    KILLI_OWNER_PASSWORD_2: ENV_PASS_2,
+  });
+  const envJar = {};
+  res = await api(envJar, 'POST', '/api/owner/login', { password: ROTATED_PASS_1 });
+  check('env override retires the previous database password (401)', res.status === 401, `status ${res.status}`);
+  res = await api(envJar, 'POST', '/api/owner/login', { password: ENV_PASS_1 });
+  check('KILLI_OWNER_PASSWORD_1 is accepted after the restart', res.status === 200 && res.data && res.data.step === 2, `status ${res.status}`);
+  res = await api(envJar, 'POST', '/api/owner/verify', { password: ENV_PASS_2 });
+  check('KILLI_OWNER_PASSWORD_2 completes the login', res.status === 200, `status ${res.status}`);
+
+  /* ---- 5. паролей нет в клиентском коде ---- */
+  const publicDir = path.join(__dirname, '..', 'public');
+  const secretStrings = [OWNER_PASS_1, OWNER_PASS_2, LEGACY_PASS_1, LEGACY_PASS_2, ROTATED_PASS_1, ENV_PASS_1];
+  const clientFiles = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.(html|js|mjs|css|json|map)$/.test(entry.name)) clientFiles.push(full);
+    }
+  };
+  walk(publicDir);
+  const offenders = clientFiles.filter((file) => {
+    const text = fs.readFileSync(file, 'utf8');
+    return secretStrings.some((secret) => text.includes(secret)) || /scrypt\$\d+\$/.test(text);
+  });
+  check(
+    'no owner password or password hash is shipped to the browser',
+    clientFiles.length > 0 && offenders.length === 0,
+    offenders.map((file) => path.relative(publicDir, file)).join(', ')
+  );
+
+  await stopChild();
 }
 
 run()
