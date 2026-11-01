@@ -36,6 +36,9 @@ const LEGACY_PASS_2 = 'Kili clan 26';
 // Значения для проверки независимой смены первого и второго пароля.
 const ROTATED_PASS_1 = 'Qw8#Rt2$Yp5!Nm7@Zx4C';
 const ROTATED_PASS_2 = 'Hb6^Vc3%Ks9&Ld1*Pf8E';
+// Пара для проверки переопределения через KILLI_OWNER_PASSWORD_1/2.
+const ENV_PASS_1 = 'Env9#Kp2$Vt7!Rs4@Lw6B';
+const ENV_PASS_2 = 'Nq5^Zd8&Hm3*Cx1(Gb7T';
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'killi-flow-'));
 const DB_PATH = path.join(dataDir, 'killi.db');
