@@ -8,9 +8,11 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 
-# better-sqlite3 ships prebuilt binaries for node 20; build tools cover the fallback.
+# better-sqlite3 ships prebuilt binaries for node 22; build tools cover the fallback.
+# Distribution security fixes for the runtime libraries shipped in the final image.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends python3 make g++ ca-certificates \
+ && apt-get install -y --only-upgrade libssl3 openssl ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
