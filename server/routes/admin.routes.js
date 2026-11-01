@@ -188,14 +188,23 @@ router.post('/owner/security/password', requireOwner, (req, res) => {
   if (!['first', 'second'].includes(which)) {
     return res.status(400).json({ error: 'bad_request', message: 'Укажите, какой пароль меняется.' });
   }
-  if (!verifyPassword(String((req.body && req.body.current) || ''), creds.pass1_hash)) {
-    return res.status(401).json({ error: 'bad_current', message: 'Неверный текущий первый пароль.' });
+  const current = String((req.body && req.body.current) || '');
+  const targetHash = which === 'first' ? creds.pass1_hash : creds.pass2_hash;
+  if (!verifyPassword(current, targetHash)) {
+    return res.status(401).json({
+      error: 'bad_current',
+      message: which === 'first' ? 'Неверный текущий первый пароль.' : 'Неверный текущий второй пароль.',
+    });
   }
   if (creds.totp_enabled && !verifyTotp(creds.totp_secret, req.body && req.body.code)) {
     return res.status(401).json({ error: 'bad_totp', message: 'Неверный код 2FA.' });
   }
   const value = String((req.body && req.body.value) || '');
   if (value.length < 10) return res.status(400).json({ error: 'weak', message: 'Минимум 10 символов.' });
+  const otherHash = which === 'first' ? creds.pass2_hash : creds.pass1_hash;
+  if (verifyPassword(value, otherHash)) {
+    return res.status(400).json({ error: 'same', message: 'Пароли должны отличаться друг от друга.' });
+  }
   updateAdminCreds(which === 'first' ? { pass1_hash: hashPassword(value) } : { pass2_hash: hashPassword(value) });
   res.json({ ok: true, message: 'Пароль обновлён.' });
 });
