@@ -2,7 +2,7 @@
 
 /* CLAN KILLI — application shell: router, navigation, theme, owner entry */
 
-import { state, api, esc, toast, SETTINGS, avatarHtml } from './core.js';
+import { state, api, esc, toast, SETTINGS, avatarHtml, chatHub } from './core.js';
 import { home, about, members, downloads, appPage, discordPage } from './views.js';
 import { accountPage, applyPage, chatPage } from './account.js';
 import { adminPage, openOwnerLogin } from './admin.js';
@@ -106,9 +106,13 @@ function renderFooter() {
 
 /* ------------------------------ navigation ------------------------------- */
 
+function chatBadge(item) {
+  return item.key === 'chat' ? '<em class="nav-badge" hidden></em>' : '';
+}
+
 function navItemHtml(item, active) {
   return `<a class="nav-link${item.key === active ? ' is-active' : ''}" href="${item.hash}" data-nav="${item.key}">
-    <i aria-hidden="true">${item.icon}</i><span>${esc(item.label)}</span>
+    <i aria-hidden="true">${item.icon}</i><span>${esc(item.label)}</span>${chatBadge(item)}
   </a>`;
 }
 
@@ -132,10 +136,72 @@ function renderNav(active) {
       (item) =>
         `<button class="mobile-nav-item${item.key === active ? ' is-active' : ''}" data-mobile="${item.key}" type="button"${
           item.key === 'more' ? ' data-more="1"' : ''
-        }><i aria-hidden="true">${item.icon}</i><span>${esc(item.label)}</span></button>`
+        }><i aria-hidden="true">${item.icon}</i><span>${esc(item.label)}</span>${chatBadge(item)}</button>`
     ).join('');
   }
   renderAccountButton();
+}
+
+/* --------------------------- chat notifications -------------------------- */
+
+const chatWatch = { off: null, count: 0, lastToastAt: 0 };
+
+function chatEligible() {
+  return Boolean(state.user && state.user.permissions && state.user.permissions.member);
+}
+
+function isChatRoute() {
+  return String(state.route || '').indexOf('/chat') === 0;
+}
+
+function renderChatNotify() {
+  const count = chatWatch.count;
+  const label = count > 99 ? '99+' : String(count);
+  const badges = document.querySelectorAll('.nav-badge');
+  Array.prototype.forEach.call(badges, (node) => {
+    node.textContent = label;
+    node.hidden = count === 0;
+  });
+  const links = document.querySelectorAll('[data-nav="chat"], [data-mobile="chat"]');
+  Array.prototype.forEach.call(links, (node) => {
+    node.classList.toggle('has-unread', count > 0);
+  });
+}
+
+function clearChatNotify() {
+  if (!chatWatch.count) return;
+  chatWatch.count = 0;
+  renderChatNotify();
+}
+
+function startChatWatch() {
+  if (chatWatch.off || !chatEligible() || !window.EventSource) return;
+  chatWatch.off = chatHub.subscribe((name, payload) => {
+    if (name !== 'message' || !payload || !payload.author) return;
+    if (state.user && payload.author.id === state.user.id) return;
+    if (isChatRoute()) return;
+    chatWatch.count += 1;
+    renderChatNotify();
+    const now = Date.now();
+    if (now - chatWatch.lastToastAt < 6000) return;
+    chatWatch.lastToastAt = now;
+    const body = String(payload.body || '').replace(/\s+/g, ' ').slice(0, 70);
+    toast(`Чат · ${payload.author.nickname}: ${body}`, 'info');
+  });
+}
+
+function stopChatWatch() {
+  if (chatWatch.off) {
+    try {
+      chatWatch.off();
+    } catch {
+      /* ignore */
+    }
+    chatWatch.off = null;
+  }
+  chatHub.stop();
+  chatWatch.count = 0;
+  renderChatNotify();
 }
 
 function accountChip() {
@@ -217,6 +283,10 @@ async function render() {
   closeDrawer();
   state.route = path;
   renderNav(route.nav);
+  if (chatEligible()) startChatWatch();
+  else stopChatWatch();
+  if (isChatRoute()) clearChatNotify();
+  renderChatNotify();
   document.title = `${route.title} — ${(SETTINGS().site_name || 'CLAN KILLI')}`;
   window.scrollTo({ top: 0, behavior: 'auto' });
 
