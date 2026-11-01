@@ -82,7 +82,7 @@ function absorbCookies(res, jar) {
   }
 }
 
-async function api(jar, method, urlPath, body) {
+async function api(jar, method, urlPath, body, base = BASE) {
   const headers = {};
   if (jar && Object.keys(jar).length) headers.cookie = cookieHeader(jar);
   let payload;
@@ -92,7 +92,7 @@ async function api(jar, method, urlPath, body) {
     headers['content-type'] = 'application/json';
     payload = JSON.stringify(body);
   }
-  const res = await fetch(BASE + urlPath, { method, headers, body: payload, redirect: 'manual' });
+  const res = await fetch(base + urlPath, { method, headers, body: payload, redirect: 'manual' });
   if (jar) absorbCookies(res, jar);
   const type = res.headers.get('content-type') || '';
   let data = null;
