@@ -20,6 +20,7 @@ import {
   avatarHtml,
   statusDot,
   formToObject,
+  chatHub,
 } from './core.js';
 
 const MODES = [
