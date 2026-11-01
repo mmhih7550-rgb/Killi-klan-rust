@@ -1,5 +1,19 @@
 # CLAN KILLI — Express + SQLite, no build step.
-FROM node:22-bookworm-slim
+# Stage 1 only produces node_modules (build tools stay out of the shipped image).
+FROM node:22-trixie-slim AS deps
+
+WORKDIR /app
+
+# better-sqlite3 ships prebuilt binaries for node 22; build tools cover the source fallback.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends python3 make g++ \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund
+
+# Stage 2 is the runtime image: no compilers, only patched distribution packages.
+FROM node:22-trixie-slim
 
 ENV NODE_ENV=production \
     PORT=80 \
@@ -8,16 +22,13 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 
-# better-sqlite3 ships prebuilt binaries for node 22; build tools cover the fallback.
-# Distribution security fixes for the runtime libraries shipped in the final image.
+# Distribution security fixes for the libraries shipped in the final image.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends python3 make g++ ca-certificates \
- && apt-get install -y --only-upgrade libssl3 openssl ca-certificates \
+ && apt-get -y --no-install-recommends upgrade \
  && rm -rf /var/lib/apt/lists/*
 
+COPY --from=deps /app/node_modules ./node_modules
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --no-audit --no-fund
-
 COPY server ./server
 COPY public ./public
 COPY scripts ./scripts
