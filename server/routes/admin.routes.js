@@ -121,21 +121,18 @@ router.post('/owner/verify', (req, res) => {
   const creds = getAdminCreds();
   const lock = lockedUntil(creds);
   if (lock) {
-    return res.status(423).json({ error: 'locked', message: 'Вход временно заблокирован.' });
+    return res.status(423).json({ error: 'locked', message: 'Слишком много неудачных попыток. Попробуйте позже.' });
   }
   const password = String((req.body && req.body.password) || '');
   const code = String((req.body && req.body.code) || '').trim();
 
   if (!verifyPassword(password, creds.pass2_hash)) {
-    const updated = registerFailure('step2 failed', req);
+    registerFailure('step2 failed', req);
     db.prepare('DELETE FROM admin_sessions WHERE token_hash = ?').run(sha256(token));
     clearCookie(res, ADMIN_COOKIE);
-    const nowLocked = lockedUntil(updated);
     return res.status(401).json({
       error: 'bad_password',
-      message: nowLocked
-        ? `Неверный второй пароль. Вход заблокирован до ${nowLocked.toLocaleTimeString('ru-RU')}.`
-        : 'Неверный второй пароль. Начните вход заново.',
+      message: 'Неверный второй пароль. Начните вход заново.',
     });
   }
   if (creds.totp_enabled) {
