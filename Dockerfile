@@ -1,19 +1,19 @@
 # CLAN KILLI — Express + SQLite, no build step.
-# Stage 1 only produces node_modules (build tools stay out of the shipped image).
-FROM node:22-trixie-slim AS deps
+# Stage 1 only produces node_modules; build tools never reach the shipped image.
+FROM node:22-alpine AS deps
 
 WORKDIR /app
 
-# better-sqlite3 ships prebuilt binaries for node 22; build tools cover the source fallback.
-RUN apt-get update \
- && apt-get install -y --no-install-recommends python3 make g++ \
- && rm -rf /var/lib/apt/lists/*
+# better-sqlite3 is a native module; on Alpine it must be compiled from source,
+# so the toolchain lives only in this build stage.
+RUN apk upgrade --no-cache \
+ && apk add --no-cache --virtual .build python3 make g++
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --no-audit --no-fund
+RUN npm ci --omit=dev --no-audit --no-fund --build-from-source
 
-# Stage 2 is the runtime image: no compilers, only patched distribution packages.
-FROM node:22-trixie-slim
+# Stage 2 is the runtime image: no compilers, patched Alpine packages only.
+FROM node:22-alpine
 
 ENV NODE_ENV=production \
     PORT=80 \
@@ -22,10 +22,8 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 
-# Distribution security fixes for the libraries shipped in the final image.
-RUN apt-get update \
- && apt-get -y --no-install-recommends upgrade \
- && rm -rf /var/lib/apt/lists/*
+# Distribution security fixes for the packages shipped in the final image.
+RUN apk upgrade --no-cache
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json package-lock.json ./
