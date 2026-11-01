@@ -804,44 +804,30 @@ export async function chatPage() {
         });
       }
 
-      let source;
-      if (window.EventSource) {
-        source = new EventSource('/api/chat/stream');
-        source.addEventListener('message', (event) => {
-          try {
-            append(JSON.parse(event.data));
-          } catch {
-            /* ignore malformed frame */
+      const offChat = chatHub.subscribe((name, payload) => {
+        if (name === 'message') {
+          if (payload) append(payload);
+          return;
+        }
+        if (name === 'message_deleted') {
+          if (!payload) return;
+          const node = body.querySelector(`[data-msg="${payload.id}"]`);
+          if (node) {
+            node.classList.add('chat-msg-deleted');
+            const content = node.querySelector('.chat-text');
+            if (content) content.textContent = 'Сообщение удалено модератором';
           }
-        });
-        source.addEventListener('message_deleted', (event) => {
-          try {
-            const payload = JSON.parse(event.data);
-            const node = body.querySelector(`[data-msg="${payload.id}"]`);
-            if (node) {
-              node.classList.add('chat-msg-deleted');
-              const content = node.querySelector('.chat-text');
-              if (content) content.textContent = 'Сообщение удалено модератором';
-            }
-          } catch {
-            /* ignore */
+          return;
+        }
+        if (name === 'ready') {
+          if (onlineLabel && payload && typeof payload.online === 'number') {
+            onlineLabel.textContent = `${payload.online} онлайн`;
           }
-        });
-        source.addEventListener('ready', (event) => {
-          try {
-            const payload = JSON.parse(event.data);
-            if (onlineLabel && typeof payload.online === 'number') {
-              onlineLabel.textContent = `${payload.online} онлайн`;
-            }
-          } catch {
-            /* ignore */
-          }
-        });
-        source.addEventListener('error', () => {
-          if (onlineLabel) onlineLabel.textContent = 'переподключение…';
-        });
-      }
-      state.chat = { close: () => source && source.close() };
+          return;
+        }
+        if (name === 'error' && onlineLabel) onlineLabel.textContent = 'переподключение…';
+      });
+      state.chat = { close: offChat };
     },
   };
 }
