@@ -292,8 +292,7 @@ const INITIAL_HASHES = {
 const CREDS_VERSION = '2026-11-a';
 const ENV_VERSION = 'env';
 
-function ensureCredsVersionColumn() {
-  const columns = db.prepare('PRAGMA table_info(admin_credentials)').all();
+function ensureCredsVersionColumn() {  const columns = db.prepare('PRAGMA table_info(admin_credentials)').all();
   if (!columns.some((column) => column.name === 'creds_version')) {
     db.exec('ALTER TABLE admin_credentials ADD COLUMN creds_version TEXT');
   }
