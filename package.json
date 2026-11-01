@@ -9,7 +9,7 @@
     "check": "node scripts/check.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "dependencies": {
     "better-sqlite3": "^11.10.0",
