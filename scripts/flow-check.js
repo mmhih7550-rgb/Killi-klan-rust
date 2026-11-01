@@ -200,8 +200,20 @@ async function startServer(envOverrides = {}) {
   throw new Error(`server did not become ready in time:\n${serverLog}`);
 }
 
+/* Останавливает текущий инстанс и дожидается освобождения файла БД. */
+function stopChild() {
+  if (!child || child.killed) return Promise.resolve();
+  const proc = child;
+  child = null;
+  return new Promise((resolve) => {
+    proc.once('exit', () => setTimeout(resolve, 400));
+    proc.kill('SIGKILL');
+  });
+}
+
 function stopServer() {
   if (child && !child.killed) child.kill('SIGKILL');
+  child = null;
   try {
     fs.rmSync(dataDir, { recursive: true, force: true });
   } catch {
