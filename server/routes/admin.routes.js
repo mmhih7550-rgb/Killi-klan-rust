@@ -81,8 +81,8 @@ router.get('/owner/status', (req, res) => {
     pending,
     must_change: Boolean(creds.must_change),
     totp_enabled: Boolean(creds.totp_enabled),
-    locked_until: lock ? lock.toISOString() : null,
-    attempts_left: Math.max(0, MAX_ATTEMPTS - (creds.failed_count || 0)),
+    // Внутренние детали блокировки наружу не отдаём: серверная защита от
+    // перебора работает, но посетитель не видит ни таймера, ни счётчика.
     last_login: creds.last_login,
   });
 });
