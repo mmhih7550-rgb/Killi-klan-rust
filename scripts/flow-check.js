@@ -168,9 +168,9 @@ async function startServer() {
       HOST: '127.0.0.1',
       NODE_ENV: 'test',
       DATA_DIR: dataDir,
-      // deterministic owner credentials for this isolated test instance
-      KILLI_OWNER_PASSWORD_1: 'Moti3003',
-      KILLI_OWNER_PASSWORD_2: 'Kili clan 26',
+      // детерминированные пароли владельца для изолированного тестового инстанса
+      KILLI_OWNER_PASSWORD_1: OWNER_PASS_1,
+      KILLI_OWNER_PASSWORD_2: OWNER_PASS_2,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
