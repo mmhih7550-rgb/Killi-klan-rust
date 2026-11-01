@@ -1261,7 +1261,7 @@ async function tabSecurity(content) {
       </form>
       <form class="panel stack" data-password="second">
         <h3>Второй пароль</h3>
-        <label class="field"><span>Текущий первый пароль (подтверждение)</span><input class="input" type="password" name="current" required /></label>
+        <label class="field"><span>Текущий второй пароль</span><input class="input" type="password" name="current" required /></label>
         <label class="field"><span>Новый второй пароль (мин. 10 символов)</span><input class="input" type="password" name="value" minlength="10" required /></label>
         ${creds.totp_enabled ? '<label class="field"><span>Код 2FA</span><input class="input" name="code" maxlength="6" required /></label>' : ''}
         <button class="btn btn-primary" type="submit">Сменить второй пароль</button>
