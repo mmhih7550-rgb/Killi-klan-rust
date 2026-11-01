@@ -575,11 +575,6 @@ async function run() {
  * что KILLI_OWNER_PASSWORD_1/2 переопределяют креденшелы при старте.
  */
 
-async function loginOwner(jar) {
-  const first = await api(jar, 'POST', '/api/owner/login', { password: OWNER_PASS_1, ...arguments[1] });
-  return first;
-}
-
 async function ownerCredentialLifecycle() {
   /* ---- 1. рестарт на существующей БД: новые хеши сохранились ---- */
   await stopChild();
