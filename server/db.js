@@ -276,26 +276,57 @@ function invalidateSettings() {
 
 /* --------------------------- owner credentials ------------------------ */
 
+/*
+ * Только scrypt-хеши (N=16384, r=8, p=1, соль 16 байт). Открытых паролей в
+ * репозитории нет и быть не должно. Значения можно переопределить переменными
+ * окружения KILLI_OWNER_PASSWORD_1 / KILLI_OWNER_PASSWORD_2 — в этом случае
+ * при старте выполняется ротация хешей в уже существующей базе.
+ */
 const INITIAL_HASHES = {
-  pass1: 'scrypt$16384$8$1$bJtFyLVGFnfGn3SBWomeLg==$8V+89Fw3rp/8WXgmczQ/zpW5IYSBDBPsmRJOO3ekAVz49KlHZ/v4rjAcpVH9W59TELCHf/R6/bgkqzduccZVPw==',
-  pass2: 'scrypt$16384$8$1$wgIY6mPLtjHDMkybHjHKQQ==$KJc/CgFgjNn/vHnRnBKRU/NxDVZ3jz5Q/z/U34yPtK8KliQ4Q+p090F1ZjiZ6ANtLp0M5CJXnTYPer3KXOWtGg==',
+  pass1: 'scrypt$16384$8$1$nLbUyEcMhK1M52EPUvNvZQ==$vFVDE5HSQVo612g6ApLz1piM8Ay6VrE77h9iW4xKtBp5Rqg1tKIoDYa47GTM+0Nm+eAhaTeSaqm90s789PRfFg==',
+  pass2: 'scrypt$16384$8$1$v7JK/vrrr1Ebf364YS7HEw==$Csl4RYhB/3BhdbZBx9uKRXFBx71ivWuywR6FRdp+wmh6eSNy4TuICAmE9x6wmqruEvdCUwfefR7re/BTTHRstw==',
 };
 
+/* Версия набора креденшелов владельца. При изменении версии хеши в уже
+   существующей базе принудительно перезаписываются — старые пароли умирают. */
+const CREDS_VERSION = '2026-11-a';
+const ENV_VERSION = 'env';
+
+function ensureCredsVersionColumn() {
+  const columns = db.prepare('PRAGMA table_info(admin_credentials)').all();
+  if (!columns.some((column) => column.name === 'creds_version')) {
+    db.exec('ALTER TABLE admin_credentials ADD COLUMN creds_version TEXT');
+  }
+}
+ensureCredsVersionColumn();
+
 function seedAdmin() {
-  const existing = db.prepare('SELECT id FROM admin_credentials WHERE id = 1').get();
-  if (existing) return;
   const { hashPassword } = require('./security');
   const p1 = process.env.KILLI_OWNER_PASSWORD_1;
   const p2 = process.env.KILLI_OWNER_PASSWORD_2;
+  const fromEnv = Boolean(p1 && p2);
+  // Секреты из окружения всегда считаются актуальными; без них — INITIAL_HASHES.
+  const version = fromEnv ? `${ENV_VERSION}:${sha256Short(`${p1}:${p2}`)}` : CREDS_VERSION;
+  const pass1 = fromEnv ? hashPassword(p1) : INITIAL_HASHES.pass1;
+  const pass2 = fromEnv ? hashPassword(p2) : INITIAL_HASHES.pass2;
+
+  const existing = db.prepare('SELECT id, creds_version FROM admin_credentials WHERE id = 1').get();
+  if (!existing) {
+    db.prepare(
+      `INSERT INTO admin_credentials (id, pass1_hash, pass2_hash, totp_enabled, must_change, creds_version, updated_at)
+       VALUES (1, ?, ?, 0, 0, ?, ?)`
+    ).run(pass1, pass2, version, nowIso());
+    return;
+  }
+  if (existing.creds_version === version) return;
+  // Ротация: новые хеши, сброс блокировок и полный отзыв сессий владельца.
   db.prepare(
-    `INSERT INTO admin_credentials (id, pass1_hash, pass2_hash, totp_enabled, must_change, updated_at)
-     VALUES (1, ?, ?, 0, ?, ?)`
-  ).run(
-    p1 ? hashPassword(p1) : INITIAL_HASHES.pass1,
-    p2 ? hashPassword(p2) : INITIAL_HASHES.pass2,
-    p1 && p2 ? 0 : 1,
-    nowIso()
-  );
+    `UPDATE admin_credentials
+        SET pass1_hash = ?, pass2_hash = ?, must_change = 0, creds_version = ?,
+            failed_count = 0, locked_until = NULL, updated_at = ?
+      WHERE id = 1`
+  ).run(pass1, pass2, version, nowIso());
+  db.prepare('DELETE FROM admin_sessions').run();
 }
 seedAdmin();
 
