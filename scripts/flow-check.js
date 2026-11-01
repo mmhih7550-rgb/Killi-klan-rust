@@ -159,19 +159,26 @@ const APPLICATION = {
 let child = null;
 let serverLog = '';
 
-async function startServer() {
+async function startServer(envOverrides = {}) {
+  const env = {
+    ...process.env,
+    PORT: String(PORT),
+    HOST: '127.0.0.1',
+    NODE_ENV: 'test',
+    DATA_DIR: dataDir,
+  };
+  // По умолчанию полагаемся на встроенные хеши из server/db.js (INITIAL_HASHES):
+  // внешние переменные окружения не должны влиять на изолированную проверку.
+  delete env.KILLI_OWNER_PASSWORD_1;
+  delete env.KILLI_OWNER_PASSWORD_2;
+  for (const [key, value] of Object.entries(envOverrides)) {
+    if (value === null || value === undefined) delete env[key];
+    else env[key] = value;
+  }
+
   child = spawn(process.execPath, [serverEntry], {
     cwd: path.join(__dirname, '..'),
-    env: {
-      ...process.env,
-      PORT: String(PORT),
-      HOST: '127.0.0.1',
-      NODE_ENV: 'test',
-      DATA_DIR: dataDir,
-      // детерминированные пароли владельца для изолированного тестового инстанса
-      KILLI_OWNER_PASSWORD_1: OWNER_PASS_1,
-      KILLI_OWNER_PASSWORD_2: OWNER_PASS_2,
-    },
+    env,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   child.stdout.on('data', (chunk) => {
