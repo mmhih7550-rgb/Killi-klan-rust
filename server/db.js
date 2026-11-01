@@ -305,7 +305,9 @@ function seedAdmin() {
   const p2 = process.env.KILLI_OWNER_PASSWORD_2;
   const fromEnv = Boolean(p1 && p2);
   // Секреты из окружения всегда считаются актуальными; без них — INITIAL_HASHES.
-  const version = fromEnv ? `${ENV_VERSION}:${sha256Short(`${p1}:${p2}`)}` : CREDS_VERSION;
+  const version = fromEnv
+    ? `${ENV_VERSION}:${require('crypto').createHash('sha256').update(`${p1}:${p2}`).digest('hex').slice(0, 16)}`
+    : CREDS_VERSION;
   const pass1 = fromEnv ? hashPassword(p1) : INITIAL_HASHES.pass1;
   const pass2 = fromEnv ? hashPassword(p2) : INITIAL_HASHES.pass2;
 
