@@ -11,7 +11,7 @@
 ```bash
 npm ci
 PORT=3000 npm start        # http://localhost:3000
-curl localhost:3000/healthz
+curl localhost:3000/healthz     # JSON-статус и /api/health (если /healthz перехватывает edge-прокси)
 ```
 
 Локальные данные (SQLite и загруженные файлы) создаются автоматически в `data/`.
