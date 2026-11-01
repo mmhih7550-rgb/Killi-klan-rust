@@ -25,6 +25,18 @@ const Database = require('better-sqlite3');
 
 const PORT = Number(process.env.CHECK_PORT || 3123);
 const BASE = `http://127.0.0.1:${PORT}`;
+
+// Текущие пароли владельца (совпадают с INITIAL_HASHES в server/db.js).
+// Нигде в клиентском коде они не встречаются — проверяется отдельной проверкой.
+const OWNER_PASS_1 = 'V7!qN4#zK9@pR2$xM8wL6t';
+const OWNER_PASS_2 = 'C3@mX8!vT5#kL9$wQ2nH7r';
+// Пароли, которые использовались раньше и после ротации работать не должны.
+const LEGACY_PASS_1 = 'Moti3003';
+const LEGACY_PASS_2 = 'Kili clan 26';
+// Значения для проверки независимой смены первого и второго пароля.
+const ROTATED_PASS_1 = 'Qw8#Rt2$Yp5!Nm7@Zx4C';
+const ROTATED_PASS_2 = 'Hb6^Vc3%Ks9&Ld1*Pf8E';
+
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'killi-flow-'));
 const DB_PATH = path.join(dataDir, 'killi.db');
 const serverEntry = path.join(__dirname, '..', 'server', 'index.js');
