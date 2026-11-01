@@ -35,8 +35,10 @@ curl localhost:3000/healthz
 
 ## Где подключить Steam и Discord
 
-1. **Steam**: получите API-ключ по ссылке выше и задайте `STEAM_API_KEY`. Callback-адрес сайта —
-   `${APP_BASE_URL}/auth/steam/return`.
+1. **Steam**: получите API-ключ по ссылке выше и задайте `STEAM_API_KEY`. Адрес возврата (OpenID
+   `return_to`), который принимает сайт — `${APP_BASE_URL}/auth/steam/callback`. Отдельно
+   регистрировать его в Steam не нужно: OpenID 2.0 не требует whitelist, достаточно, чтобы домен
+   совпадал с указанным в ключе.
 2. **Discord**: создайте приложение, в разделе *OAuth2 → Redirects* добавьте
    `${APP_BASE_URL}/auth/discord/callback`, скопируйте Client ID и Client Secret в
    `DISCORD_CLIENT_ID` и `DISCORD_CLIENT_SECRET`.
